@@ -1,0 +1,475 @@
+<!doctype html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Qwen Code Config</title>
+        <link rel="stylesheet" href="styles.css" />
+    </head>
+    <body>
+        <div class="app-shell">
+            <aside class="sidebar" aria-label="Settings sections">
+                <div class="brand">
+                    <div class="brand-mark">Q</div>
+                    <div>
+                        <h1>Qwen Code Config</h1>
+                        <p>Settings editor</p>
+                    </div>
+                </div>
+
+                <nav class="section-nav">
+                    <button class="nav-item" data-section="file">File</button>
+                    <button class="nav-item active" data-section="models">
+                        Models
+                    </button>
+                    <button class="nav-item" data-section="environment">
+                        Environment
+                    </button>
+                    <button class="nav-item" data-section="options">
+                        Options
+                    </button>
+                    <button class="nav-item" data-section="advanced">
+                        JSON View
+                    </button>
+                </nav>
+            </aside>
+
+            <main class="main">
+                <header class="topbar">
+                    <div class="file-summary">
+                        <span class="label">Settings file</span>
+                        <strong id="current-path">~/.qwen/settings.json</strong>
+                    </div>
+                    <div class="topbar-actions">
+                        <label
+                            class="topbar-select-control"
+                            for="layout-density-select"
+                        >
+                            <span class="label">Density</span>
+                            <select
+                                id="layout-density-select"
+                                class="inline-select"
+                            >
+                                <option value="compact">Compact</option>
+                                <option value="comfortable">Comfortable</option>
+                                <option value="spacious">Spacious</option>
+                            </select>
+                        </label>
+                        <label
+                            class="topbar-select-control"
+                            for="theme-mode-select"
+                        >
+                            <span class="label">Theme</span>
+                            <select
+                                id="theme-mode-select"
+                                class="inline-select"
+                            >
+                                <option value="system">System</option>
+                                <option value="light">Light</option>
+                                <option value="dark">Dark</option>
+                            </select>
+                        </label>
+                        <span id="status-pill" class="status-pill"
+                            >Loading</span
+                        >
+                        <button id="reload-button" class="secondary-button">
+                            Reload
+                        </button>
+                        <button id="save-as-button" class="secondary-button">
+                            Save As
+                        </button>
+                        <button
+                            id="save-button"
+                            class="primary-button"
+                            disabled
+                        >
+                            Save
+                        </button>
+                    </div>
+                </header>
+                <div
+                    id="backup-path-note"
+                    class="backup-path-note"
+                    hidden
+                ></div>
+
+                <section id="section-file" class="view" hidden>
+                    <div class="content-header">
+                        <h2>File</h2>
+                        <p>
+                            Open/save workflows will live here. The framework
+                            currently loads the example settings file from the
+                            project directory.
+                        </p>
+                    </div>
+                    <div class="placeholder-panel">
+                        <label for="path-input">Settings path</label>
+                        <div class="path-row">
+                            <input
+                                id="path-input"
+                                type="text"
+                                value="~/.qwen/settings.json"
+                            />
+                            <button
+                                id="browse-path-button"
+                                class="secondary-button"
+                            >
+                                Browse
+                            </button>
+                            <button
+                                id="load-path-button"
+                                class="secondary-button"
+                            >
+                                Load
+                            </button>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="section-models" class="view">
+                    <div class="content-header">
+                        <h2>Models</h2>
+                        <p>
+                            Fetch provider catalogs on demand, add manual
+                            models, and edit per-model generation settings
+                            without losing unknown fields.
+                        </p>
+                    </div>
+                    <div id="model-warnings" class="warning-panel" hidden></div>
+                    <div id="models-layout" class="models-layout">
+                        <div class="models-sidebar">
+                            <div class="provider-panel">
+                                <div class="panel-toolbar">
+                                    <h3>Provider</h3>
+                                    <div class="toolbar-actions">
+                                        <button
+                                            id="new-provider-button"
+                                            class="secondary-button compact-button"
+                                        >
+                                            New Provider
+                                        </button>
+                                        <button
+                                            id="remove-provider-button"
+                                            class="secondary-button compact-button"
+                                        >
+                                            Remove
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <label class="field-label" for="provider-select"
+                                    >Profile</label
+                                >
+                                <select
+                                    id="provider-select"
+                                    class="field-input"
+                                ></select>
+
+                                <div class="provider-grid">
+                                    <label>
+                                        <span class="field-label">Label</span>
+                                        <input
+                                            id="provider-label-input"
+                                            class="field-input"
+                                            type="text"
+                                        />
+                                    </label>
+
+                                    <label>
+                                        <span class="field-label"
+                                            >Protocol</span
+                                        >
+                                        <select
+                                            id="provider-protocol-select"
+                                            class="field-input"
+                                        >
+                                            <option value="openai">
+                                                OpenAI
+                                            </option>
+                                            <option value="anthropic">
+                                                Anthropic
+                                            </option>
+                                        </select>
+                                    </label>
+
+                                    <label class="provider-span">
+                                        <span class="field-label"
+                                            >Base URL</span
+                                        >
+                                        <input
+                                            id="provider-base-url-input"
+                                            class="field-input"
+                                            type="text"
+                                        />
+                                    </label>
+
+                                    <label class="provider-span">
+                                        <span class="field-label">Env Key</span>
+                                        <input
+                                            id="provider-env-key-input"
+                                            class="field-input"
+                                            type="text"
+                                        />
+                                    </label>
+                                </div>
+
+                                <div class="provider-actions">
+                                    <button
+                                        id="fetch-provider-models-button"
+                                        class="secondary-button"
+                                    >
+                                        Fetch Models
+                                    </button>
+                                </div>
+
+                                <label
+                                    class="field-label"
+                                    for="manual-model-id-input"
+                                    >Manual model id</label
+                                >
+                                <div class="manual-add-row">
+                                    <input
+                                        id="manual-model-id-input"
+                                        class="field-input"
+                                        type="text"
+                                        placeholder="provider/model-name"
+                                    />
+                                    <input
+                                        id="manual-model-name-input"
+                                        class="field-input"
+                                        type="text"
+                                        placeholder="Display name (optional)"
+                                    />
+                                    <button
+                                        id="add-manual-model-button"
+                                        class="secondary-button"
+                                    >
+                                        Add
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div class="catalog-panel">
+                                <div class="panel-toolbar">
+                                    <h3>Catalog</h3>
+                                    <span
+                                        id="catalog-summary"
+                                        class="panel-note"
+                                        >No fetched models</span
+                                    >
+                                </div>
+                                <div class="catalog-controls">
+                                    <input
+                                        id="catalog-filter-input"
+                                        class="field-input"
+                                        type="text"
+                                        placeholder="Filter by model id"
+                                    />
+                                    <select
+                                        id="catalog-filter-mode"
+                                        class="field-input catalog-filter-mode"
+                                    >
+                                        <option value="substring">
+                                            Substring
+                                        </option>
+                                        <option value="fuzzy">Fuzzy</option>
+                                    </select>
+                                </div>
+                                <div
+                                    id="catalog-list"
+                                    class="catalog-list"
+                                ></div>
+                            </div>
+                        </div>
+
+                        <div class="models-main">
+                            <div class="provider-panel">
+                                <div class="panel-toolbar">
+                                    <h3>Fast Model</h3>
+                                </div>
+
+                                <div class="fast-model-body">
+                                    <label
+                                        id="fast-model-select-group"
+                                        class="fast-model-select-group"
+                                    >
+                                        <span class="field-label">Selection</span>
+                                        <select
+                                            id="fast-model-select"
+                                            class="field-input"
+                                        ></select>
+                                    </label>
+
+                                    <div
+                                        id="fast-model-note"
+                                        class="panel-note fast-model-note"
+                                    ></div>
+                                </div>
+                            </div>
+
+                            <div class="configured-models-panel">
+                                <div class="panel-toolbar">
+                                    <h3>Configured Models</h3>
+                                    <span
+                                        id="configured-model-count"
+                                        class="panel-note"
+                                        >0 models</span
+                                    >
+                                </div>
+                                <div class="protocol-panel">
+                                    <div class="panel-toolbar protocol-toolbar">
+                                        <h3>OpenAI</h3>
+                                        <span
+                                            id="openai-model-count"
+                                            class="panel-note"
+                                            >0 models</span
+                                        >
+                                    </div>
+                                    <div
+                                        id="openai-model-list"
+                                        class="model-list compact-model-list"
+                                    ></div>
+                                </div>
+
+                                <div class="protocol-panel">
+                                    <div class="panel-toolbar protocol-toolbar">
+                                        <h3>Anthropic</h3>
+                                        <span
+                                            id="anthropic-model-count"
+                                            class="panel-note"
+                                            >0 models</span
+                                        >
+                                    </div>
+                                    <div
+                                        id="anthropic-model-list"
+                                        class="model-list compact-model-list"
+                                    ></div>
+                                </div>
+                            </div>
+
+                            <div
+                                id="model-inspector-panel"
+                                class="inspector-panel"
+                            >
+                                <div class="panel-toolbar">
+                                    <h3>Model Details</h3>
+                                    <button
+                                        id="close-inspector-button"
+                                        class="secondary-button compact-button"
+                                    >
+                                        Close
+                                    </button>
+                                </div>
+                                <div
+                                    id="model-inspector-content"
+                                    class="inspector-content"
+                                ></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="section-environment" class="view" hidden>
+                    <div class="content-header">
+                        <h2>Environment</h2>
+                        <p>
+                            Edit fallback environment variables stored in
+                            <code>env</code>. Values are masked by default.
+                        </p>
+                    </div>
+                    <div class="env-panel">
+                        <div class="env-toolbar">
+                            <button
+                                id="add-env-button"
+                                class="secondary-button"
+                            >
+                                Add Variable
+                            </button>
+                        </div>
+                        <div
+                            class="env-table"
+                            aria-label="Environment variables"
+                        >
+                            <div class="env-table-header">
+                                <span>Name</span>
+                                <span>Value</span>
+                                <span>Actions</span>
+                            </div>
+                            <div id="env-list" class="env-list"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="section-options" class="view" hidden>
+                    <div class="content-header">
+                        <h2>Options</h2>
+                        <p>
+                            Curated controls for the most important Qwen Code
+                            settings.
+                        </p>
+                    </div>
+
+                    <div class="settings-group">
+                        <div class="group-header">
+                            <h3>Privacy</h3>
+                        </div>
+
+                        <label class="setting-row">
+                            <span>
+                                <strong>Usage statistics</strong>
+                                <small
+                                    >Controls
+                                    <code>privacy.usageStatisticsEnabled</code
+                                    >.</small
+                                >
+                            </span>
+                            <input
+                                id="usage-statistics-toggle"
+                                type="checkbox"
+                            />
+                        </label>
+
+                        <label class="setting-row">
+                            <span>
+                                <strong>Telemetry</strong>
+                                <small
+                                    >Controls
+                                    <code>telemetry.enabled</code>.</small
+                                >
+                            </span>
+                            <input id="telemetry-toggle" type="checkbox" />
+                        </label>
+                    </div>
+
+                    <div class="settings-group">
+                        <div class="group-header">
+                            <h3>Updates</h3>
+                        </div>
+
+                        <label class="setting-row">
+                            <span>
+                                <strong>Auto update</strong>
+                                <small
+                                    >Controls
+                                    <code>general.enableAutoUpdate</code
+                                    >.</small
+                                >
+                            </span>
+                            <input id="auto-update-toggle" type="checkbox" />
+                        </label>
+                    </div>
+                </section>
+
+                <section id="section-advanced" class="view" hidden>
+                    <div class="content-header">
+                        <h2>JSON View</h2>
+                        <p>Read-only JSON preview</p>
+                    </div>
+                    <pre id="json-preview" class="json-preview">{}</pre>
+                </section>
+            </main>
+        </div>
+
+        <script type="module" src="main.js"></script>
+    </body>
+</html>
