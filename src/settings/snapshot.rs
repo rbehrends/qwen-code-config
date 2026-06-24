@@ -8,6 +8,7 @@ use super::{
     env::{collect_env_warnings, get_env_vars},
     fast_model::{collect_fast_model_warnings, parse_fast_model},
     json::get_bool,
+    mcp::{collect_mcp_warnings, get_mcp_servers},
     model_editing::{collect_editor_warnings, get_models},
 };
 
@@ -28,10 +29,12 @@ pub(super) fn build_snapshot(
     }
     let mut parse_warnings = Vec::new();
     let models = get_models(&json, &mut parse_warnings);
+    let mcp_servers = get_mcp_servers(&json, &mut parse_warnings);
     let (fast_model, fast_model_warnings) = parse_fast_model(&json);
     let warnings = collect_editor_warnings(&json, &models)
         .into_iter()
         .chain(collect_env_warnings(&json))
+        .chain(collect_mcp_warnings(&json, &mcp_servers))
         .chain(collect_fast_model_warnings(&fast_model, &models))
         .chain(fast_model_warnings)
         .chain(parse_warnings)
@@ -42,6 +45,7 @@ pub(super) fn build_snapshot(
         options,
         env_vars: get_env_vars(&json),
         models,
+        mcp_servers,
         fast_model,
         providers: builtin_provider_presets(),
         warnings,

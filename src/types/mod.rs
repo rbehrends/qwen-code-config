@@ -12,7 +12,7 @@ pub(crate) use commands::{
 };
 pub(crate) use domain::{
     CatalogModel, CustomProviderProfile, EnvironmentVariable, FastModelMode, FastModelSelection,
-    ImportantOptions, ModelEntry, ProviderDraftProfile, ProviderPreset, ReasoningEffort,
-    ReasoningMode, SupportedProtocol,
+    ImportantOptions, McpServerEntry, McpTransport, ModelEntry, ProviderDraftProfile,
+    ProviderPreset, ReasoningEffort, ReasoningMode, SupportedProtocol,
 };
 pub(crate) use ui::{LayoutDensity, ThemeMode, UiStateSnapshot};

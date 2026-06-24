@@ -11,11 +11,7 @@ import {
 } from "./shared.js";
 
 export async function openSettingsPathDialog() {
-  if (!openDialog) {
-    return undefined;
-  }
-
-  return openDialog({
+  return openPathDialog({
     multiple: false,
     directory: false,
     filters: [
@@ -41,6 +37,14 @@ export async function chooseSavePath(defaultPath) {
       },
     ],
   });
+}
+
+export async function openPathDialog(options) {
+  if (!openDialog) {
+    return undefined;
+  }
+
+  return openDialog(options);
 }
 
 export async function confirmDialog(

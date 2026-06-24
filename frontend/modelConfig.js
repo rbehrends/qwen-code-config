@@ -66,7 +66,9 @@ export function renderModels() {
 export function renderWarnings() {
   // Warning text is derived by the Rust preview path so the frontend does not
   // grow a parallel warning engine with drift-prone semantics.
-  const warnings = state.warnings;
+  const warnings = state.warnings.filter(
+    (warning) => !warning.startsWith("MCP:"),
+  );
 
   if (warnings.length === 0) {
     elements.modelWarnings.hidden = true;

@@ -1,6 +1,7 @@
 mod env;
 mod fast_model;
 mod json;
+mod mcp;
 mod model_editing;
 mod options;
 mod snapshot;
@@ -9,7 +10,7 @@ use crate::{
     backup::{atomic_write_text, prune_backups_if_needed, write_backup_if_present},
     paths::expand_settings_path,
     types::{
-        EnvironmentVariable, FastModelSelection, ImportantOptions, ModelEntry,
+        EnvironmentVariable, FastModelSelection, ImportantOptions, McpServerEntry, ModelEntry,
         PreviewSettingsResult, SettingsSnapshot,
     },
 };
@@ -19,6 +20,7 @@ use std::fs;
 use self::{
     env::{apply_env_vars, collect_env_warnings, mask_preview_env_values},
     fast_model::{apply_fast_model, collect_fast_model_warnings, parse_fast_model},
+    mcp::{apply_mcp_servers, collect_mcp_warnings},
     model_editing::{
         apply_models, collect_editor_warnings, ensure_default_model, normalize_editor_models,
     },
@@ -42,12 +44,20 @@ pub(crate) fn save_settings_to_path(
     options: ImportantOptions,
     env_vars: Vec<EnvironmentVariable>,
     models: Vec<ModelEntry>,
+    mcp_servers: Vec<McpServerEntry>,
     fast_model: Option<FastModelSelection>,
 ) -> Result<SettingsSnapshot, String> {
     let source_path_buf = expand_settings_path(source_path)?;
     let target_path_buf = expand_settings_path(target_path)?;
     let json = load_settings_json_or_empty(&source_path_buf)?;
-    let json = build_settings_json(json, &options, &env_vars, &models, fast_model.as_ref())?;
+    let json = build_settings_json(
+        json,
+        &options,
+        &env_vars,
+        &models,
+        &mcp_servers,
+        fast_model.as_ref(),
+    )?;
 
     let formatted = serde_json::to_string_pretty(&json)
         .map_err(|error| format!("Failed to format settings JSON: {error}"))?;
@@ -78,19 +88,30 @@ pub(crate) fn preview_settings(
     options: ImportantOptions,
     env_vars: Vec<EnvironmentVariable>,
     models: Vec<ModelEntry>,
+    mcp_servers: Vec<McpServerEntry>,
     fast_model: Option<FastModelSelection>,
 ) -> Result<PreviewSettingsResult, String> {
-    let canonical_json =
-        build_settings_json(base_json, &options, &env_vars, &models, fast_model.as_ref())?;
+    let canonical_json = build_settings_json(
+        base_json,
+        &options,
+        &env_vars,
+        &models,
+        &mcp_servers,
+        fast_model.as_ref(),
+    )?;
     let normalized_models = normalize_editor_models(&canonical_json, &models);
+    let mut mcp_parse_warnings = Vec::new();
+    let normalized_mcp_servers = mcp::get_mcp_servers(&canonical_json, &mut mcp_parse_warnings);
     let (normalized_fast_model, fast_model_parse_warnings) = parse_fast_model(&canonical_json);
     let warnings = collect_editor_warnings(&canonical_json, &normalized_models)
         .into_iter()
         .chain(collect_env_warnings(&canonical_json))
+        .chain(collect_mcp_warnings(&canonical_json, &normalized_mcp_servers))
         .chain(collect_fast_model_warnings(
             &normalized_fast_model,
             &normalized_models,
         ))
+        .chain(mcp_parse_warnings)
         .chain(fast_model_parse_warnings)
         .collect();
     let preview_json = mask_preview_env_values(canonical_json.clone());
@@ -102,6 +123,7 @@ pub(crate) fn preview_settings(
             .map_err(|error| format!("Failed to format preview JSON: {error}"))?,
         warnings,
         models: normalized_models,
+        mcp_servers: normalized_mcp_servers,
         fast_model: normalized_fast_model,
     })
 }
@@ -111,11 +133,13 @@ fn build_settings_json(
     options: &ImportantOptions,
     env_vars: &[EnvironmentVariable],
     models: &[ModelEntry],
+    mcp_servers: &[McpServerEntry],
     fast_model: Option<&FastModelSelection>,
 ) -> Result<Value, String> {
     apply_important_options(&mut json, options)?;
     apply_env_vars(&mut json, env_vars)?;
     apply_models(&mut json, models)?;
+    apply_mcp_servers(&mut json, mcp_servers)?;
     ensure_default_model(&mut json, models)?;
     apply_fast_model(&mut json, fast_model)?;
     Ok(json)
@@ -560,9 +584,15 @@ mod tests {
             is_duplicate: false,
         }];
 
-        let canonical_json =
-            build_settings_json(base_json, &ImportantOptions::default(), &[], &models, None)
-                .unwrap();
+        let canonical_json = build_settings_json(
+            base_json,
+            &ImportantOptions::default(),
+            &[],
+            &models,
+            &[],
+            None,
+        )
+        .unwrap();
         let normalized = normalize_editor_models(&canonical_json, &models);
         assert_eq!(normalized.len(), 1);
         assert!(normalized[0].is_default);
@@ -614,9 +644,15 @@ mod tests {
             },
         ];
 
-        let canonical_json =
-            build_settings_json(base_json, &ImportantOptions::default(), &[], &models, None)
-                .unwrap();
+        let canonical_json = build_settings_json(
+            base_json,
+            &ImportantOptions::default(),
+            &[],
+            &models,
+            &[],
+            None,
+        )
+        .unwrap();
         let normalized = normalize_editor_models(&canonical_json, &models);
         assert!(normalized.iter().all(|model| model.is_duplicate));
     }
@@ -710,9 +746,15 @@ mod tests {
             },
         ];
 
-        let canonical_json =
-            build_settings_json(base_json, &ImportantOptions::default(), &[], &models, None)
-                .unwrap();
+        let canonical_json = build_settings_json(
+            base_json,
+            &ImportantOptions::default(),
+            &[],
+            &models,
+            &[],
+            None,
+        )
+        .unwrap();
         let normalized = normalize_editor_models(&canonical_json, &models);
 
         assert_eq!(normalized.len(), 2);
@@ -726,8 +768,15 @@ mod tests {
             "fastModel": "not-a-valid-fast-model"
         });
 
-        let canonical_json =
-            build_settings_json(base_json, &ImportantOptions::default(), &[], &[], None).unwrap();
+        let canonical_json = build_settings_json(
+            base_json,
+            &ImportantOptions::default(),
+            &[],
+            &[],
+            &[],
+            None,
+        )
+        .unwrap();
 
         assert_eq!(canonical_json["fastModel"], "not-a-valid-fast-model");
     }
@@ -743,6 +792,7 @@ mod tests {
             &ImportantOptions::default(),
             &[],
             &[],
+            &[],
             Some(&FastModelSelection::default()),
         )
         .unwrap();
@@ -755,6 +805,7 @@ mod tests {
         let canonical_json = build_settings_json(
             serde_json::json!({}),
             &ImportantOptions::default(),
+            &[],
             &[],
             &[],
             Some(&FastModelSelection {
@@ -819,6 +870,7 @@ mod tests {
             ImportantOptions::default(),
             Vec::new(),
             models,
+            Vec::new(),
             Some(FastModelSelection {
                 mode: crate::types::FastModelMode::Specific,
                 protocol: Some(SupportedProtocol::Openai),
@@ -863,6 +915,7 @@ mod tests {
             ImportantOptions::default(),
             Vec::new(),
             models,
+            Vec::new(),
             None,
         )
         .unwrap();

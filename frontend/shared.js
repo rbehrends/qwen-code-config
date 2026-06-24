@@ -24,6 +24,7 @@ export const state = {
   },
   envVars: [],
   models: [],
+  mcpServers: [],
   fastModel: {
     mode: "inherit",
     protocol: null,
@@ -43,6 +44,7 @@ export const state = {
   customProviderProfiles: [],
   selectedProviderProfileId: null,
   selectedModelUiId: null,
+  selectedMcpServerUiId: null,
   inspectorVisible: false,
   draggedModelUiId: null,
   dragTargetModelUiId: null,
@@ -55,6 +57,7 @@ export const state = {
   themeMode: "system",
   dirty: false,
   modelNameRewriteRules: [],
+  mcpInspectorFlashTimer: null,
 };
 
 export const elements = {
@@ -77,7 +80,13 @@ export const elements = {
   autoUpdateToggle: document.querySelector("#auto-update-toggle"),
   modelsLayout: document.querySelector("#models-layout"),
   modelWarnings: document.querySelector("#model-warnings"),
+  mcpWarnings: document.querySelector("#mcp-warnings"),
   configuredModelCount: document.querySelector("#configured-model-count"),
+  mcpServerCount: document.querySelector("#mcp-server-count"),
+  mcpServerList: document.querySelector("#mcp-server-list"),
+  addMcpServerButton: document.querySelector("#add-mcp-server-button"),
+  removeMcpServerButton: document.querySelector("#remove-mcp-server-button"),
+  mcpInspectorContent: document.querySelector("#mcp-inspector-content"),
   providerSelect: document.querySelector("#provider-select"),
   fastModelSelectGroup: document.querySelector("#fast-model-select-group"),
   fastModelSelect: document.querySelector("#fast-model-select"),

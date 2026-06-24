@@ -3,7 +3,7 @@ use serde_json::Value;
 
 use super::{
     CatalogModel, CustomProviderProfile, EnvironmentVariable, FastModelSelection, ImportantOptions,
-    LayoutDensity, ModelEntry, ProviderDraftProfile, ProviderPreset, ThemeMode,
+    LayoutDensity, McpServerEntry, ModelEntry, ProviderDraftProfile, ProviderPreset, ThemeMode,
 };
 
 #[derive(Debug, Deserialize)]
@@ -13,6 +13,7 @@ pub(crate) struct SaveOptionsRequest {
     pub(crate) options: ImportantOptions,
     pub(crate) env_vars: Vec<EnvironmentVariable>,
     pub(crate) models: Vec<ModelEntry>,
+    pub(crate) mcp_servers: Vec<McpServerEntry>,
     pub(crate) fast_model: Option<FastModelSelection>,
 }
 
@@ -24,6 +25,7 @@ pub(crate) struct SaveOptionsAsRequest {
     pub(crate) options: ImportantOptions,
     pub(crate) env_vars: Vec<EnvironmentVariable>,
     pub(crate) models: Vec<ModelEntry>,
+    pub(crate) mcp_servers: Vec<McpServerEntry>,
     pub(crate) fast_model: Option<FastModelSelection>,
 }
 
@@ -56,6 +58,7 @@ pub(crate) struct PreviewSettingsRequest {
     pub(crate) options: ImportantOptions,
     pub(crate) env_vars: Vec<EnvironmentVariable>,
     pub(crate) models: Vec<ModelEntry>,
+    pub(crate) mcp_servers: Vec<McpServerEntry>,
     pub(crate) fast_model: Option<FastModelSelection>,
 }
 
@@ -80,6 +83,7 @@ pub(crate) struct SettingsSnapshot {
     pub(crate) options: ImportantOptions,
     pub(crate) env_vars: Vec<EnvironmentVariable>,
     pub(crate) models: Vec<ModelEntry>,
+    pub(crate) mcp_servers: Vec<McpServerEntry>,
     pub(crate) fast_model: FastModelSelection,
     pub(crate) providers: Vec<ProviderPreset>,
     pub(crate) warnings: Vec<String>,
@@ -115,5 +119,6 @@ pub(crate) struct PreviewSettingsResult {
     pub(crate) preview_json: String,
     pub(crate) warnings: Vec<String>,
     pub(crate) models: Vec<ModelEntry>,
+    pub(crate) mcp_servers: Vec<McpServerEntry>,
     pub(crate) fast_model: FastModelSelection,
 }

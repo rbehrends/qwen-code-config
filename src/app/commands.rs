@@ -64,6 +64,7 @@ pub(crate) fn save_options(
         request.options,
         request.env_vars,
         request.models,
+        request.mcp_servers,
         request.fast_model,
     )
 }
@@ -78,6 +79,7 @@ pub(crate) fn save_options_as(
         request.options,
         request.env_vars,
         request.models,
+        request.mcp_servers,
         request.fast_model,
     )
 }
@@ -122,6 +124,7 @@ pub(crate) fn preview_settings_command(
         request.options,
         request.env_vars,
         request.models,
+        request.mcp_servers,
         request.fast_model,
     )
 }

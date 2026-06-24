@@ -71,6 +71,14 @@ impl fmt::Display for SupportedProtocol {
     }
 }
 
+#[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub(crate) enum McpTransport {
+    Stdio,
+    Http,
+    Sse,
+}
+
 #[derive(Debug, Clone, Deserialize, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ModelEntry {
@@ -166,4 +174,21 @@ impl Default for ImportantOptions {
 pub(crate) struct EnvironmentVariable {
     pub(crate) key: String,
     pub(crate) value: String,
+}
+
+#[derive(Debug, Clone, Deserialize, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct McpServerEntry {
+    pub(crate) ui_id: String,
+    pub(crate) name: String,
+    pub(crate) enabled: bool,
+    pub(crate) transport: McpTransport,
+    pub(crate) command: String,
+    pub(crate) args: Vec<String>,
+    pub(crate) cwd: String,
+    pub(crate) env_vars: Vec<EnvironmentVariable>,
+    pub(crate) url: String,
+    pub(crate) headers: Vec<EnvironmentVariable>,
+    pub(crate) timeout: Option<u64>,
+    pub(crate) raw_server: Value,
 }

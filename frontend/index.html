@@ -28,6 +28,9 @@
                     <button class="nav-item" data-section="options">
                         Options
                     </button>
+                    <button class="nav-item" data-section="mcp">
+                        MCP Servers
+                    </button>
                     <button class="nav-item" data-section="advanced">
                         JSON View
                     </button>
@@ -457,6 +460,63 @@
                             </span>
                             <input id="auto-update-toggle" type="checkbox" />
                         </label>
+                    </div>
+                </section>
+
+                <section id="section-mcp" class="view" hidden>
+                    <div class="content-header">
+                        <h2>MCP Servers</h2>
+                        <p>
+                            Add, remove, and modify
+                            <code>mcpServers</code> entries without hand-editing
+                            JSON.
+                        </p>
+                    </div>
+
+                    <div id="mcp-warnings" class="warning-panel" hidden></div>
+
+                    <div class="mcp-layout">
+                        <div class="configured-models-panel">
+                            <div class="panel-toolbar">
+                                <h3>Configured Servers</h3>
+                                <div class="toolbar-actions">
+                                    <span
+                                        id="mcp-server-count"
+                                        class="panel-note"
+                                    ></span>
+                                    <button
+                                        id="add-mcp-server-button"
+                                        class="secondary-button compact-button"
+                                    >
+                                        Add Server
+                                    </button>
+                                </div>
+                            </div>
+                            <div
+                                id="mcp-server-list"
+                                class="mcp-server-list"
+                                aria-label="Configured MCP servers"
+                            ></div>
+                        </div>
+
+                        <div class="inspector-panel">
+                            <div class="panel-toolbar">
+                                <h3>Server</h3>
+                                <div class="toolbar-actions">
+                                    <button
+                                        id="remove-mcp-server-button"
+                                        class="secondary-button compact-button danger-button"
+                                    >
+                                        Remove
+                                    </button>
+                                </div>
+                            </div>
+
+                            <div
+                                id="mcp-inspector-content"
+                                class="inspector-content"
+                            ></div>
+                        </div>
                     </div>
                 </section>
 

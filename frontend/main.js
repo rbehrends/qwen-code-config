@@ -63,6 +63,14 @@ import {
   syncModelDragStateWithModels,
 } from "./modelConfig.js";
 import {
+  initializeMcpConfig,
+  normalizeMcpServersSnapshot,
+  removeMcpServer,
+  renderMcpServers,
+  renderMcpWarnings,
+  serializeMcpServers,
+} from "./mcpConfig.js";
+import {
   buildFastModelRequest,
   initializeFastModel,
   normalizeFastModelSnapshot,
@@ -169,6 +177,10 @@ initializeModelConfig({
 });
 initializeFastModel({
   markStateChanged,
+});
+initializeMcpConfig({
+  markStateChanged,
+  confirmAndRemoveMcpServer,
 });
 
 initializeProviderWorkbench({
@@ -287,6 +299,7 @@ function buildSettingsSaveRequest(overrides = {}) {
     options: state.options,
     envVars: serializeEnvVars(),
     models: serializeModels(),
+    mcpServers: serializeMcpServers(),
     ...(fastModel ? { fastModel } : {}),
   };
 }
@@ -424,6 +437,25 @@ async function confirmAndRemoveModel(uiId) {
   }
 }
 
+async function confirmRemoveMcpServer(uiId) {
+  const server = state.mcpServers.find((entry) => entry.uiId === uiId);
+  if (!server) {
+    return false;
+  }
+
+  const label = server.name?.trim() || "Unnamed server";
+  return confirmAction(`Remove MCP server ${label}?`, {
+    title: "Remove MCP Server",
+    okLabel: "Remove",
+  });
+}
+
+async function confirmAndRemoveMcpServer(uiId) {
+  if (await confirmRemoveMcpServer(uiId)) {
+    removeMcpServer(uiId);
+  }
+}
+
 function hasUnsavedChanges() {
   return state.dirty || state.previewCanonicalJson !== state.baseCanonicalJson;
 }
@@ -454,6 +486,7 @@ async function applySnapshot(snapshot) {
   state.models = snapshot.models.map((model) => ({
     ...model,
   }));
+  state.mcpServers = normalizeMcpServersSnapshot(snapshot.mcpServers);
   state.fastModel = normalizeFastModelSnapshot(snapshot.fastModel);
   state.fastModelTouched = false;
   state.warnings = Array.isArray(snapshot.warnings) ? snapshot.warnings : [];
@@ -489,6 +522,8 @@ async function applySnapshot(snapshot) {
   renderFastModelControls();
   renderModels();
   renderWarnings();
+  renderMcpServers();
+  renderMcpWarnings();
   renderHeaderNote();
   await refreshDerivedState();
 }
@@ -689,12 +724,16 @@ async function refreshDerivedState() {
       options: state.options,
       envVars: serializeEnvVars(),
       models: serializeModels(),
+      mcpServers: serializeMcpServers(),
       ...(fastModel ? { fastModel } : {}),
     });
 
     if (requestId !== state.previewRequestId) {
       return;
     }
+
+    const activeView = getActiveViewElement();
+    const preservedScrollTop = activeView?.scrollTop ?? null;
 
     state.previewCanonicalJson = String(result.canonicalJson ?? "{}");
     state.previewJson = String(result.previewJson ?? "{}");
@@ -717,7 +756,9 @@ async function refreshDerivedState() {
     renderWarnings();
     renderFastModelControls();
     renderModels();
+    renderMcpWarnings();
     renderJsonPreview();
+    restoreViewScroll(activeView, preservedScrollTop);
 
     if (!state.dirty && elements.statusPill.classList.contains("dirty")) {
       setStatus("Valid", "ready");
@@ -727,4 +768,16 @@ async function refreshDerivedState() {
       elements.jsonPreview.textContent = `Preview unavailable: ${error}`;
     }
   }
+}
+
+function getActiveViewElement() {
+  return document.querySelector(".view:not([hidden])");
+}
+
+function restoreViewScroll(view, scrollTop) {
+  if (!(view instanceof HTMLElement) || scrollTop === null) {
+    return;
+  }
+
+  view.scrollTop = scrollTop;
 }
