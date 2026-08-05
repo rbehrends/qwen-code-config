@@ -9,30 +9,6 @@ import { setDefaultModel } from "./modelReorder.js";
 
 let deps = null;
 
-const REASONING_MODE_CHOICES = [
-  { value: "default", label: "Default" },
-  { value: "enabled", label: "Enabled" },
-  { value: "disabled", label: "Disabled" },
-];
-const OPENAI_REASONING_EFFORT_CHOICES = [
-  { value: "", label: "Default" },
-  { value: "minimal", label: "Minimal" },
-  { value: "low", label: "Low" },
-  { value: "medium", label: "Medium" },
-  { value: "high", label: "High" },
-  { value: "xhigh", label: "X-High" },
-  { value: "max", label: "Max" },
-];
-const ANTHROPIC_REASONING_EFFORT_CHOICES = [
-  { value: "", label: "Default" },
-  { value: "minimal", label: "Minimal" },
-  { value: "low", label: "Low" },
-  { value: "medium", label: "Medium" },
-  { value: "high", label: "High" },
-  { value: "xhigh", label: "X-High" },
-  { value: "max", label: "Max" },
-];
-
 export function initializeModelInspector(nextDeps) {
   deps = nextDeps;
 }
@@ -208,34 +184,6 @@ export function renderModelInspector(model) {
     ),
   );
 
-  grid.append(
-    createSelectField(
-      "Reasoning Mode",
-      model.reasoningMode ?? "default",
-      REASONING_MODE_CHOICES,
-      (value) => {
-        model.reasoningMode = value || "default";
-        deps.markStateChanged();
-      },
-      { fieldKey: "reasoningMode" },
-    ),
-  );
-
-  grid.append(
-    createSelectField(
-      "Reasoning Effort",
-      model.reasoningEffort ?? "",
-      model.protocol === "anthropic"
-        ? ANTHROPIC_REASONING_EFFORT_CHOICES
-        : OPENAI_REASONING_EFFORT_CHOICES,
-      (value) => {
-        model.reasoningEffort = value || null;
-        deps.markStateChanged();
-      },
-      { fieldKey: "reasoningEffort" },
-    ),
-  );
-
   if (model.protocol === "anthropic") {
     grid.append(
       createNumberField(
@@ -260,7 +208,7 @@ export function renderModelInspector(model) {
   const preservedExtraBody = Object.keys(model.extraBody || {}).length;
   const preservedReasoning = preservedKeysCount(
     model.rawModel?.generationConfig?.reasoning,
-    ["enabled", "effort", "budget_tokens"],
+    model.protocol === "anthropic" ? ["budget_tokens"] : [],
   );
   footer.textContent =
     preservedSampling > 0 || preservedExtraBody > 0 || preservedReasoning > 0

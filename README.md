@@ -84,7 +84,7 @@ Built-in provider presets currently include OpenRouter, OpenCode Go, OpenCode Ze
 
 The `Models` section also includes a `Fast Model` selector. This controls Qwen Code's `fastModel` setting, can inherit from the main model, and warns when the saved fast-model value does not match the configured structured-editor model list.
 
-Selecting a model opens the model configuration dialog. From there you can change the model ID, display name, base URL, environment variable key, context window size, temperature, `top_p`, maximum token limit, reasoning mode, and reasoning effort. Anthropic entries also expose a reasoning budget token field. The application preserves provider-specific fields that it does not handle itself.
+Selecting a model opens the model configuration dialog. From there you can change the model ID, display name, base URL, environment variable key, context window size, temperature, `top_p`, and maximum token limit. Anthropic entries also expose a reasoning budget token field. Reasoning effort is selected at runtime with Qwen Code's `/effort` command. The application preserves provider-specific fields that it does not handle itself.
 
 The `Environment` section allows editing of environment variables stored in the settings file under `env`. This is the place to enter API key variable names and values if you want Qwen Code to read them from `settings.json`. The environment variables can also be set directly when invoking Qwen Code from a shell. The Qwen Code settings editor treats the `env` object as a fallback store with environment variables set in the shell taking priority, but it is useful when you want the settings file to remain self-contained.
 
