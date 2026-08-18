@@ -106,7 +106,10 @@ pub(crate) fn preview_settings(
     let warnings = collect_editor_warnings(&canonical_json, &normalized_models)
         .into_iter()
         .chain(collect_env_warnings(&canonical_json))
-        .chain(collect_mcp_warnings(&canonical_json, &normalized_mcp_servers))
+        .chain(collect_mcp_warnings(
+            &canonical_json,
+            &normalized_mcp_servers,
+        ))
         .chain(collect_fast_model_warnings(
             &normalized_fast_model,
             &normalized_models,
@@ -768,15 +771,9 @@ mod tests {
             "fastModel": "not-a-valid-fast-model"
         });
 
-        let canonical_json = build_settings_json(
-            base_json,
-            &ImportantOptions::default(),
-            &[],
-            &[],
-            &[],
-            None,
-        )
-        .unwrap();
+        let canonical_json =
+            build_settings_json(base_json, &ImportantOptions::default(), &[], &[], &[], None)
+                .unwrap();
 
         assert_eq!(canonical_json["fastModel"], "not-a-valid-fast-model");
     }

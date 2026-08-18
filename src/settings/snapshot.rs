@@ -27,6 +27,9 @@ pub(super) fn build_snapshot(
     if let Some(value) = get_bool(&json, &["general", "enableAutoUpdate"]) {
         options.enable_auto_update = value;
     }
+    if let Some(value) = get_bool(&json, &["security", "folderTrust", "enabled"]) {
+        options.folder_trust_enabled = value;
+    }
     let mut parse_warnings = Vec::new();
     let models = get_models(&json, &mut parse_warnings);
     let mcp_servers = get_mcp_servers(&json, &mut parse_warnings);
@@ -53,4 +56,27 @@ pub(super) fn build_snapshot(
         json: serde_json::to_string_pretty(&json)
             .map_err(|error| format!("Failed to format settings JSON: {error}"))?,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn build_snapshot_reads_folder_trust_enabled() {
+        let snapshot = build_snapshot(
+            "settings.json".to_string(),
+            serde_json::json!({
+                "security": {
+                    "folderTrust": {
+                        "enabled": true
+                    }
+                }
+            }),
+            None,
+        )
+        .unwrap();
+
+        assert!(snapshot.options.folder_trust_enabled);
+    }
 }

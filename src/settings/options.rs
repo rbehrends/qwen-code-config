@@ -18,6 +18,34 @@ pub(crate) fn apply_important_options(
         &["general", "enableAutoUpdate"],
         options.enable_auto_update,
     )?;
+    set_bool(
+        json,
+        &["security", "folderTrust", "enabled"],
+        options.folder_trust_enabled,
+    )?;
 
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn apply_important_options_writes_folder_trust_without_removing_security_settings() {
+        let mut json = serde_json::json!({
+            "security": {
+                "otherSecuritySetting": "preserve"
+            }
+        });
+        let options = ImportantOptions {
+            folder_trust_enabled: true,
+            ..ImportantOptions::default()
+        };
+
+        apply_important_options(&mut json, &options).unwrap();
+
+        assert_eq!(json["security"]["folderTrust"]["enabled"], true);
+        assert_eq!(json["security"]["otherSecuritySetting"], "preserve");
+    }
 }

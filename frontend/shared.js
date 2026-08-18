@@ -21,6 +21,7 @@ export const state = {
     usageStatisticsEnabled: true,
     telemetryEnabled: false,
     enableAutoUpdate: true,
+    folderTrustEnabled: false,
   },
   envVars: [],
   models: [],
@@ -78,6 +79,7 @@ export const elements = {
   usageStatisticsToggle: document.querySelector("#usage-statistics-toggle"),
   telemetryToggle: document.querySelector("#telemetry-toggle"),
   autoUpdateToggle: document.querySelector("#auto-update-toggle"),
+  folderTrustToggle: document.querySelector("#folder-trust-toggle"),
   modelsLayout: document.querySelector("#models-layout"),
   modelWarnings: document.querySelector("#model-warnings"),
   mcpWarnings: document.querySelector("#mcp-warnings"),
@@ -120,4 +122,5 @@ export const optionControls = [
   ["usageStatisticsEnabled", elements.usageStatisticsToggle],
   ["telemetryEnabled", elements.telemetryToggle],
   ["enableAutoUpdate", elements.autoUpdateToggle],
+  ["folderTrustEnabled", elements.folderTrustToggle],
 ];

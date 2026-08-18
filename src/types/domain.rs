@@ -157,6 +157,7 @@ pub(crate) struct ImportantOptions {
     pub(crate) usage_statistics_enabled: bool,
     pub(crate) telemetry_enabled: bool,
     pub(crate) enable_auto_update: bool,
+    pub(crate) folder_trust_enabled: bool,
 }
 
 impl Default for ImportantOptions {
@@ -165,6 +166,7 @@ impl Default for ImportantOptions {
             usage_statistics_enabled: true,
             telemetry_enabled: false,
             enable_auto_update: true,
+            folder_trust_enabled: false,
         }
     }
 }

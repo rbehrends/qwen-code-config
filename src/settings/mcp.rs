@@ -165,64 +165,65 @@ fn extract_mcp_server(
         None => None,
     };
 
-    let (transport, command, args, cwd, env_vars, url, headers) =
-        if let Some(command) = stdio_command {
-            let args = get_string_array(object, "args").map_err(|_| {
+    let (transport, command, args, cwd, env_vars, url, headers) = if let Some(command) =
+        stdio_command
+    {
+        let args = get_string_array(object, "args").map_err(|_| {
                 format!(
                     "MCP: Server `{name}` has a non-string `args` entry and is preserved in JSON but hidden from the structured editor."
                 )
             })?;
-            let cwd = get_optional_string(object, "cwd").map_err(|_| {
+        let cwd = get_optional_string(object, "cwd").map_err(|_| {
                 format!(
                     "MCP: Server `{name}` has a non-string `cwd` and is preserved in JSON but hidden from the structured editor."
                 )
             })?;
-            let env_vars = get_string_object_entries(object, "env").map_err(|_| {
+        let env_vars = get_string_object_entries(object, "env").map_err(|_| {
                 format!(
                     "MCP: Server `{name}` has a non-string `env` entry and is preserved in JSON but hidden from the structured editor."
                 )
             })?;
-            (
-                McpTransport::Stdio,
-                command.to_string(),
-                args,
-                cwd.unwrap_or_default(),
-                env_vars,
-                String::new(),
-                Vec::new(),
-            )
-        } else if let Some(url) = http_url {
-            let headers = get_string_object_entries(object, "headers").map_err(|_| {
+        (
+            McpTransport::Stdio,
+            command.to_string(),
+            args,
+            cwd.unwrap_or_default(),
+            env_vars,
+            String::new(),
+            Vec::new(),
+        )
+    } else if let Some(url) = http_url {
+        let headers = get_string_object_entries(object, "headers").map_err(|_| {
                 format!(
                     "MCP: Server `{name}` has a non-string `headers` entry and is preserved in JSON but hidden from the structured editor."
                 )
             })?;
-            (
-                McpTransport::Http,
-                String::new(),
-                Vec::new(),
-                String::new(),
-                Vec::new(),
-                url.to_string(),
-                headers,
-            )
-        } else {
-            let url = sse_url.expect("transport count already checked");
-            let headers = get_string_object_entries(object, "headers").map_err(|_| {
+        (
+            McpTransport::Http,
+            String::new(),
+            Vec::new(),
+            String::new(),
+            Vec::new(),
+            url.to_string(),
+            headers,
+        )
+    } else {
+        let url = sse_url.expect("transport count already checked");
+        let headers = get_string_object_entries(object, "headers").map_err(|_| {
                 format!(
                     "MCP: Server `{name}` has a non-string `headers` entry and is preserved in JSON but hidden from the structured editor."
                 )
             })?;
-            (
-                McpTransport::Sse,
-                String::new(),
-                Vec::new(),
-                String::new(),
-                Vec::new(),
-                url.to_string(),
-                headers,
-            )
-        };
+        (
+            McpTransport::Sse,
+            String::new(),
+            Vec::new(),
+            String::new(),
+            Vec::new(),
+            url.to_string(),
+            headers,
+        )
+    };
 
     Ok(McpServerEntry {
         ui_id: format!("saved-mcp-{index}-{name}"),
@@ -308,7 +309,8 @@ fn apply_mcp_excluded(
                         preserved_excluded.insert(name.to_string());
                     }
                 }
-            } else if existing_mcp.get("excluded").is_some() && excluded_visible_servers.is_empty() {
+            } else if existing_mcp.get("excluded").is_some() && excluded_visible_servers.is_empty()
+            {
             } else if existing_mcp.get("excluded").is_some() {
                 return Err(
                     "Cannot save MCP enabled state because `mcp.excluded` is not an array of strings."
@@ -318,7 +320,9 @@ fn apply_mcp_excluded(
         }
         Some(_) if excluded_visible_servers.is_empty() => return Ok(()),
         Some(_) => {
-            return Err("Cannot save MCP enabled state because `mcp` is not a JSON object.".to_string());
+            return Err(
+                "Cannot save MCP enabled state because `mcp` is not a JSON object.".to_string(),
+            );
         }
         None => {}
     }
@@ -654,7 +658,10 @@ mod tests {
         .unwrap();
 
         assert!(json["mcpServers"]["broken"].is_object());
-        assert_eq!(json["mcpServers"]["saved"]["httpUrl"], "https://example.com/mcp");
+        assert_eq!(
+            json["mcpServers"]["saved"]["httpUrl"],
+            "https://example.com/mcp"
+        );
         assert_eq!(json["mcpServers"]["saved"]["trust"], true);
         assert!(json["mcpServers"]["saved"].get("url").is_none());
         assert_eq!(json["mcp"]["excluded"][0], "saved");
@@ -681,7 +688,19 @@ mod tests {
 
         assert!(warnings.is_empty());
         assert_eq!(servers.len(), 2);
-        assert!(!servers.iter().find(|server| server.name == "disabled server").unwrap().enabled);
-        assert!(servers.iter().find(|server| server.name == "enabled server").unwrap().enabled);
+        assert!(
+            !servers
+                .iter()
+                .find(|server| server.name == "disabled server")
+                .unwrap()
+                .enabled
+        );
+        assert!(
+            servers
+                .iter()
+                .find(|server| server.name == "enabled server")
+                .unwrap()
+                .enabled
+        );
     }
 }
