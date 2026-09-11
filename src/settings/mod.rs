@@ -195,6 +195,21 @@ mod tests {
     }
 
     #[test]
+    fn preview_settings_does_not_materialize_omitted_default_options() {
+        let preview = preview_settings(
+            serde_json::json!({}),
+            ImportantOptions::default(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            None,
+        )
+        .unwrap();
+
+        assert_eq!(preview.canonical_json, "{}");
+    }
+
+    #[test]
     fn apply_env_vars_replaces_string_env_entries_without_removing_other_settings() {
         let mut json = serde_json::json!({
             "env": {
