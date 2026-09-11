@@ -240,12 +240,18 @@ export function deriveProviderBadge(model) {
   // This badge is presentation-only. Provider semantics such as catalog
   // fetching, draft construction, and preset metadata stay Rust-owned.
   const trimmedBaseUrl = normalizedProviderBaseUrl(model.baseUrl);
-  const preset = state.providerPresets.find(
-    (candidate) => candidate.baseUrl === trimmedBaseUrl,
-  );
+  const preset =
+    state.providerPresets.find(
+      (candidate) =>
+        candidate.baseUrl === trimmedBaseUrl &&
+        candidate.defaultProtocol === model.protocol,
+    ) ??
+    state.providerPresets.find(
+      (candidate) => candidate.baseUrl === trimmedBaseUrl,
+    );
 
   if (preset) {
-    return `${preset.label}  •  ${model.protocol}`;
+    return `${preset.modelLabel || preset.label}  •  ${model.protocol}`;
   }
 
   return trimmedBaseUrl

@@ -7,6 +7,7 @@ use std::fmt;
 pub(crate) struct ProviderPreset {
     pub(crate) id: String,
     pub(crate) label: String,
+    pub(crate) model_label: String,
     pub(crate) base_url: String,
     pub(crate) default_env_key: String,
     pub(crate) default_protocol: SupportedProtocol,

@@ -29,6 +29,16 @@ enum ProviderCatalog {
     Nvidia,
     Ollama,
     LmStudio,
+    CommandCode,
+}
+
+impl ProviderPresetDefinition {
+    fn model_label(self) -> &'static str {
+        match self.catalog {
+            Some(ProviderCatalog::CommandCode) => "Command Code",
+            _ => self.label,
+        }
+    }
 }
 
 #[derive(Debug, Deserialize)]
@@ -39,6 +49,18 @@ struct BasicModelsDump {
 #[derive(Debug, Deserialize)]
 struct BasicModelRecord {
     id: String,
+}
+
+#[derive(Debug, Deserialize)]
+struct CommandCodeModelsDump {
+    data: Vec<CommandCodeModelRecord>,
+}
+
+#[derive(Debug, Deserialize)]
+struct CommandCodeModelRecord {
+    id: String,
+    name: Option<String>,
+    context_length: Option<u64>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -58,7 +80,7 @@ struct OpenRouterArchitecture {
     input_modalities: Option<Vec<String>>,
 }
 
-const BUILTIN_PROVIDER_PRESETS: [ProviderPresetDefinition; 8] = [
+const BUILTIN_PROVIDER_PRESETS: [ProviderPresetDefinition; 10] = [
     ProviderPresetDefinition {
         id: "openrouter",
         label: "OpenRouter",
@@ -85,6 +107,24 @@ const BUILTIN_PROVIDER_PRESETS: [ProviderPresetDefinition; 8] = [
         default_protocol: SupportedProtocol::Openai,
         supports_fetch: true,
         catalog: Some(ProviderCatalog::OpenCodeZen),
+    },
+    ProviderPresetDefinition {
+        id: "command-code-openai",
+        label: "Command Code - OpenAI compatible",
+        base_url: "https://api.commandcode.ai/provider/v1",
+        default_env_key: "CMD_API_KEY",
+        default_protocol: SupportedProtocol::Openai,
+        supports_fetch: true,
+        catalog: Some(ProviderCatalog::CommandCode),
+    },
+    ProviderPresetDefinition {
+        id: "command-code-anthropic",
+        label: "Command Code - Anthropic compatible",
+        base_url: "https://api.commandcode.ai/provider/v1",
+        default_env_key: "CMD_API_KEY",
+        default_protocol: SupportedProtocol::Anthropic,
+        supports_fetch: true,
+        catalog: Some(ProviderCatalog::CommandCode),
     },
     ProviderPresetDefinition {
         id: "kilo-code",
@@ -139,6 +179,7 @@ pub(crate) fn builtin_provider_presets() -> Vec<ProviderPreset> {
         .map(|preset| ProviderPreset {
             id: preset.id.to_string(),
             label: preset.label.to_string(),
+            model_label: preset.model_label().to_string(),
             base_url: preset.base_url.to_string(),
             default_env_key: preset.default_env_key.to_string(),
             default_protocol: preset.default_protocol,
@@ -181,6 +222,9 @@ fn fetch_catalog_models_for_preset(
 
     match preset.catalog {
         Some(ProviderCatalog::OpenRouter) => parse_openrouter_catalog(&body, preset.label),
+        Some(ProviderCatalog::CommandCode) => {
+            parse_command_code_catalog(&body, preset.model_label(), preset.default_protocol)
+        }
         Some(ProviderCatalog::OpenCodeGo)
         | Some(ProviderCatalog::OpenCodeZen)
         | Some(ProviderCatalog::KiloCode)
@@ -204,6 +248,35 @@ fn parse_basic_catalog(json: &str, label: &str) -> Result<Vec<CatalogModel>, Str
             supports_vision: false,
         })
         .collect())
+}
+
+fn parse_command_code_catalog(
+    json: &str,
+    label: &str,
+    protocol: SupportedProtocol,
+) -> Result<Vec<CatalogModel>, String> {
+    let dump: CommandCodeModelsDump = serde_json::from_str(json)
+        .map_err(|error| format!("Failed to parse {label} model catalog: {error}"))?;
+    Ok(dump
+        .data
+        .into_iter()
+        .filter(|record| command_code_model_matches_protocol(&record.id, protocol))
+        .map(|record| CatalogModel {
+            name: format_catalog_model_name(record.name.as_deref(), &record.id, label),
+            id: record.id,
+            context_window_size: record.context_length,
+            supports_vision: false,
+        })
+        .collect())
+}
+
+fn command_code_model_matches_protocol(id: &str, protocol: SupportedProtocol) -> bool {
+    let model_id = id.rsplit('/').next().unwrap_or(id).to_ascii_lowercase();
+    let is_anthropic_model = model_id.starts_with("claude-");
+    match protocol {
+        SupportedProtocol::Openai => !is_anthropic_model,
+        SupportedProtocol::Anthropic => is_anthropic_model,
+    }
 }
 
 fn parse_openrouter_catalog(json: &str, label: &str) -> Result<Vec<CatalogModel>, String> {
@@ -235,7 +308,16 @@ pub(crate) fn provider_models_url(base_url: &str) -> String {
 
 fn prettify_catalog_model_name(id: &str, label: &str) -> String {
     let display_id = id.rsplit('/').next().unwrap_or(id);
-    format!("{} ({label})", prettify_model_name(display_id))
+    format_catalog_model_name(None, display_id, label)
+}
+
+fn format_catalog_model_name(name: Option<&str>, id: &str, label: &str) -> String {
+    let display_name = name
+        .map(str::trim)
+        .filter(|name| !name.is_empty())
+        .map(ToString::to_string)
+        .unwrap_or_else(|| prettify_model_name(id));
+    format!("{display_name} ({label})")
 }
 
 #[cfg(test)]
@@ -290,6 +372,52 @@ mod tests {
         assert_eq!(models[0].name, "Gemini 2.5 Pro (OpenRouter)");
         assert_eq!(models[0].context_window_size, Some(1048576));
         assert!(models[0].supports_vision);
+    }
+
+    #[test]
+    fn parse_command_code_catalog_uses_names_context_and_protocol_filter() {
+        let json = r#"{
+            "data":[
+                {"id":"claude-sonnet-4-6","name":"Claude Sonnet 4.6","context_length":1000000},
+                {"id":"deepseek/deepseek-v4-flash","name":"DeepSeek V4 Flash","context_length":1000000}
+            ]
+        }"#;
+
+        let openai_models =
+            parse_command_code_catalog(json, "Command Code", SupportedProtocol::Openai).unwrap();
+        assert_eq!(openai_models.len(), 1);
+        assert_eq!(openai_models[0].id, "deepseek/deepseek-v4-flash");
+        assert_eq!(openai_models[0].name, "DeepSeek V4 Flash (Command Code)");
+        assert_eq!(openai_models[0].context_window_size, Some(1000000));
+
+        let anthropic_models =
+            parse_command_code_catalog(json, "Command Code", SupportedProtocol::Anthropic).unwrap();
+        assert_eq!(anthropic_models.len(), 1);
+        assert_eq!(anthropic_models[0].id, "claude-sonnet-4-6");
+    }
+
+    #[test]
+    fn builtin_provider_presets_include_command_code_variants() {
+        let presets = builtin_provider_presets();
+        let openai = presets
+            .iter()
+            .find(|preset| preset.id == "command-code-openai")
+            .expect("missing command-code-openai preset");
+        let anthropic = presets
+            .iter()
+            .find(|preset| preset.id == "command-code-anthropic")
+            .expect("missing command-code-anthropic preset");
+
+        assert_eq!(openai.label, "Command Code - OpenAI compatible");
+        assert_eq!(anthropic.label, "Command Code - Anthropic compatible");
+        assert_eq!(openai.model_label, "Command Code");
+        assert_eq!(anthropic.model_label, "Command Code");
+        assert_eq!(openai.base_url, "https://api.commandcode.ai/provider/v1");
+        assert_eq!(openai.default_env_key, "CMD_API_KEY");
+        assert_eq!(openai.default_protocol, SupportedProtocol::Openai);
+        assert_eq!(anthropic.default_protocol, SupportedProtocol::Anthropic);
+        assert!(openai.supports_fetch);
+        assert!(anthropic.supports_fetch);
     }
 
     #[test]
