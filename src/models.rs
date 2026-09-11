@@ -1,6 +1,6 @@
 use crate::types::{
-    CatalogModel, ModelEntry, ModelNameRewriteRule, ProviderDraftProfile, ReasoningMode,
-    SupportedProtocol,
+    CatalogModel, ModelEntry, ModelNameRewriteRule, OpenCodeCompatibilityStatus,
+    ProviderDraftProfile, ReasoningMode, SupportedProtocol,
 };
 use regex::{Captures, Regex};
 use serde_json::{Map, Value};
@@ -24,6 +24,11 @@ static MODEL_NAME_REWRITE_RULES: LazyLock<Vec<ModelNameRewritePattern>> = LazyLo
         ModelNameRewritePattern::uppercase_captures(r"\b([A-Za-z])([0-9]+)([A-Za-z])\b", &[1, 3]),
     ]
 });
+const OPENCODE_SESSION_HEADER: &str = "x-opencode-session";
+const OPENCODE_SESSION_PLACEHOLDER: &str = "${session_id}";
+const OPENCODE_GO_BASE_URL: &str = "https://opencode.ai/zen/go/v1";
+const OPENCODE_ZEN_BASE_URL: &str = "https://opencode.ai/zen/v1";
+
 const COMMON_MODEL_NAME_CAPITALIZATIONS: [(&str, &str); 4] = [
     ("glm", "GLM"),
     ("mimo", "MiMo"),
@@ -57,10 +62,76 @@ pub(crate) fn build_model_draft(
         reasoning_budget_tokens: None,
         sampling_params: Map::new(),
         extra_body: Map::new(),
-        raw_model: Value::Object(Map::new()),
+        raw_model: generated_provider_model_fields(profile.provider_id.as_deref()),
         is_default: !has_existing_default,
         is_duplicate: false,
     })
+}
+
+pub(crate) fn open_code_compatibility_status(
+    json: &Value,
+    models: &[ModelEntry],
+) -> OpenCodeCompatibilityStatus {
+    let open_code_models = models
+        .iter()
+        .filter(|model| is_open_code_base_url(&model.base_url))
+        .collect::<Vec<_>>();
+    let model_ui_ids_needing_session_header = open_code_models
+        .iter()
+        .filter(|model| !has_dynamic_session_header(model))
+        .map(|model| model.ui_id.clone())
+        .collect();
+    let dynamic_header_values_enabled = json
+        .get("outboundCorrelation")
+        .and_then(|value| value.get("allowDynamicHeaderValues"))
+        .and_then(Value::as_bool)
+        .unwrap_or(false);
+
+    OpenCodeCompatibilityStatus {
+        has_open_code_models: !open_code_models.is_empty(),
+        model_ui_ids_needing_session_header,
+        dynamic_header_values_enabled,
+    }
+}
+
+pub(crate) fn is_open_code_provider_id(provider_id: Option<&str>) -> bool {
+    matches!(provider_id, Some("opencode-go" | "opencode-zen"))
+}
+
+pub(crate) fn is_open_code_base_url(base_url: &str) -> bool {
+    let normalized = base_url.trim().trim_end_matches('/');
+    normalized.eq_ignore_ascii_case(OPENCODE_GO_BASE_URL)
+        || normalized.eq_ignore_ascii_case(OPENCODE_ZEN_BASE_URL)
+}
+
+pub(crate) fn has_dynamic_session_header(model: &ModelEntry) -> bool {
+    model
+        .raw_model
+        .get("generationConfig")
+        .and_then(|value| value.get("customHeaders"))
+        .and_then(|value| value.get(OPENCODE_SESSION_HEADER))
+        .and_then(Value::as_str)
+        .is_some_and(|value| value.contains(OPENCODE_SESSION_PLACEHOLDER))
+}
+
+fn generated_provider_model_fields(provider_id: Option<&str>) -> Value {
+    if !is_open_code_provider_id(provider_id) {
+        return Value::Object(Map::new());
+    }
+
+    let mut custom_headers = Map::new();
+    custom_headers.insert(
+        OPENCODE_SESSION_HEADER.to_string(),
+        Value::String(OPENCODE_SESSION_PLACEHOLDER.to_string()),
+    );
+    let mut generation_config = Map::new();
+    generation_config.insert("customHeaders".to_string(), Value::Object(custom_headers));
+    let mut model_fields = Map::new();
+    model_fields.insert(
+        "generationConfig".to_string(),
+        Value::Object(generation_config),
+    );
+    Value::Object(model_fields)
 }
 
 pub(crate) fn mark_duplicate_models(models: &mut [ModelEntry]) {
@@ -281,6 +352,7 @@ mod tests {
     fn build_model_draft_normalizes_provider_and_name() {
         let draft = build_model_draft(
             ProviderDraftProfile {
+                provider_id: None,
                 base_url: " https://example.com/v1 ".to_string(),
                 env_key: " EXAMPLE_KEY ".to_string(),
                 protocol: SupportedProtocol::Openai,
@@ -305,9 +377,89 @@ mod tests {
     }
 
     #[test]
+    fn build_model_draft_adds_session_header_only_for_open_code_presets() {
+        for provider_id in ["opencode-go", "opencode-zen"] {
+            let draft = build_model_draft(
+                ProviderDraftProfile {
+                    provider_id: Some(provider_id.to_string()),
+                    base_url: "https://opencode.ai/zen/v1".to_string(),
+                    env_key: "OPENCODE_API_KEY".to_string(),
+                    protocol: SupportedProtocol::Openai,
+                },
+                CatalogModel {
+                    id: "test-model".to_string(),
+                    name: "Test Model".to_string(),
+                    context_window_size: None,
+                    supports_vision: false,
+                },
+                false,
+            )
+            .unwrap();
+
+            assert_eq!(
+                draft.raw_model["generationConfig"]["customHeaders"][OPENCODE_SESSION_HEADER],
+                OPENCODE_SESSION_PLACEHOLDER
+            );
+        }
+
+        let draft = build_model_draft(
+            ProviderDraftProfile {
+                provider_id: Some("openrouter".to_string()),
+                base_url: "https://openrouter.ai/api/v1".to_string(),
+                env_key: "OPENROUTER_API_KEY".to_string(),
+                protocol: SupportedProtocol::Openai,
+            },
+            CatalogModel {
+                id: "test-model".to_string(),
+                name: "Test Model".to_string(),
+                context_window_size: None,
+                supports_vision: false,
+            },
+            false,
+        )
+        .unwrap();
+
+        assert_eq!(draft.raw_model, Value::Object(Map::new()));
+    }
+
+    #[test]
+    fn open_code_compatibility_status_detects_missing_header_and_gate() {
+        let models = vec![ModelEntry {
+            ui_id: "saved-openai-0-test-model".to_string(),
+            protocol: SupportedProtocol::Openai,
+            id: "test-model".to_string(),
+            name: "Test Model".to_string(),
+            base_url: "https://opencode.ai/zen/go/v1/".to_string(),
+            env_key: "OPENCODE_API_KEY".to_string(),
+            context_window_size: None,
+            temperature: None,
+            top_p: None,
+            max_tokens: None,
+            reasoning_mode: ReasoningMode::Default,
+            reasoning_effort: None,
+            reasoning_budget_tokens: None,
+            sampling_params: Map::new(),
+            extra_body: Map::new(),
+            raw_model: Value::Object(Map::new()),
+            is_default: false,
+            is_duplicate: false,
+        }];
+
+        let status = open_code_compatibility_status(&serde_json::json!({}), &models);
+
+        assert!(status.has_open_code_models);
+        assert_eq!(
+            status.model_ui_ids_needing_session_header,
+            vec!["saved-openai-0-test-model"]
+        );
+        assert!(!status.dynamic_header_values_enabled);
+    }
+
+    #[test]
     fn build_model_draft_rejects_empty_ids() {
         let error = build_model_draft(
             ProviderDraftProfile {
+                provider_id: None,
                 base_url: String::new(),
                 env_key: String::new(),
                 protocol: SupportedProtocol::Anthropic,

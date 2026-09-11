@@ -1,5 +1,6 @@
 use crate::{
     catalog::builtin_provider_presets,
+    models::open_code_compatibility_status,
     types::{ImportantOptions, SettingsSnapshot},
 };
 use serde_json::Value;
@@ -42,6 +43,7 @@ pub(super) fn build_snapshot(
         .chain(fast_model_warnings)
         .chain(parse_warnings)
         .collect();
+    let open_code_compatibility = open_code_compatibility_status(&json, &models);
 
     Ok(SettingsSnapshot {
         path,
@@ -52,6 +54,7 @@ pub(super) fn build_snapshot(
         fast_model,
         providers: builtin_provider_presets(),
         warnings,
+        open_code_compatibility,
         last_backup_path,
         json: serde_json::to_string_pretty(&json)
             .map_err(|error| format!("Failed to format settings JSON: {error}"))?,

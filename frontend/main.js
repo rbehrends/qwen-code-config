@@ -285,7 +285,16 @@ async function loadSettings(path) {
   try {
     const snapshot = await loadSettingsSnapshot(path);
     await applySnapshot(snapshot);
-    setStatus("Valid", "ready");
+    const migrated = await offerOpenCodeCompatibilityUpdate(
+      snapshot.openCodeCompatibility,
+    );
+    if (migrated) {
+      setStatus("OpenCode compatibility updated; save to apply", "dirty");
+    } else if (openCodeCompatibilityNeedsUpdate(snapshot.openCodeCompatibility)) {
+      setStatus("Loaded with warnings", "ready");
+    } else {
+      setStatus("Valid", "ready");
+    }
   } catch (error) {
     setStatus(error, "error");
   }
@@ -296,6 +305,7 @@ function buildSettingsSaveRequest(overrides = {}) {
 
   return {
     ...overrides,
+    baseJson: cloneJsonValue(state.baseJsonObject),
     options: state.options,
     envVars: serializeEnvVars(),
     models: serializeModels(),
@@ -356,7 +366,6 @@ async function performSaveAs() {
     }
 
     await saveSettingsWithCommand("save_options_as", {
-      sourcePath: state.path,
       targetPath: selected,
     });
   } catch (error) {
@@ -387,6 +396,85 @@ async function loadUiState() {
 
 async function confirmAction(message, options) {
   return confirmDialog(message, options);
+}
+
+function openCodeCompatibilityNeedsUpdate(status) {
+  return Boolean(
+    status?.hasOpenCodeModels &&
+      (status.dynamicHeaderValuesEnabled !== true ||
+        (Array.isArray(status.modelUiIdsNeedingSessionHeader) &&
+          status.modelUiIdsNeedingSessionHeader.length > 0)),
+  );
+}
+
+async function offerOpenCodeCompatibilityUpdate(status) {
+  if (!openCodeCompatibilityNeedsUpdate(status)) {
+    return false;
+  }
+
+  const modelCount = Array.isArray(status.modelUiIdsNeedingSessionHeader)
+    ? status.modelUiIdsNeedingSessionHeader.length
+    : 0;
+  const changes = [];
+  if (modelCount > 0) {
+    changes.push(
+      `add the required session header to ${modelCount} OpenCode model${modelCount === 1 ? "" : "s"}`,
+    );
+  }
+  if (!status.dynamicHeaderValuesEnabled) {
+    changes.push(
+      "enable dynamic header values in outboundCorrelation",
+    );
+  }
+
+  const accepted = await confirmAction(
+    `This settings file contains OpenCode Go/Zen configuration that is missing ${changes.join(" and ")}. Update the in-memory configuration now? You can review the JSON preview before saving.`,
+    {
+      title: "Update OpenCode Compatibility",
+      okLabel: "Update",
+    },
+  );
+  if (!accepted) {
+    return false;
+  }
+
+  const modelsNeedingHeaders = new Set(
+    Array.isArray(status.modelUiIdsNeedingSessionHeader)
+      ? status.modelUiIdsNeedingSessionHeader
+      : [],
+  );
+  state.models.forEach((model) => {
+    if (!modelsNeedingHeaders.has(model.uiId)) {
+      return;
+    }
+
+    const rawModel = asJsonObject(model.rawModel);
+    const generationConfig = asJsonObject(rawModel.generationConfig);
+    const customHeaders = asJsonObject(generationConfig.customHeaders);
+    customHeaders["x-opencode-session"] = "${session_id}";
+    generationConfig.customHeaders = customHeaders;
+    rawModel.generationConfig = generationConfig;
+    model.rawModel = rawModel;
+  });
+
+  if (!status.dynamicHeaderValuesEnabled) {
+    const outboundCorrelation = asJsonObject(
+      state.baseJsonObject.outboundCorrelation,
+    );
+    outboundCorrelation.allowDynamicHeaderValues = true;
+    state.baseJsonObject.outboundCorrelation = outboundCorrelation;
+  }
+
+  state.changeSerial += 1;
+  setDirty(true);
+  await refreshDerivedState();
+  return true;
+}
+
+function asJsonObject(value) {
+  return value && typeof value === "object" && !Array.isArray(value)
+    ? { ...value }
+    : {};
 }
 
 async function confirmReplaceCurrentSettings(path) {
@@ -456,6 +544,18 @@ async function confirmAndRemoveMcpServer(uiId) {
   }
 }
 
+function isOpenCodeProviderProfile(profile) {
+  return profile?.presetId === "opencode-go" || profile?.presetId === "opencode-zen";
+}
+
+function enableOpenCodeDynamicHeaderValues() {
+  const outboundCorrelation = asJsonObject(
+    state.baseJsonObject.outboundCorrelation,
+  );
+  outboundCorrelation.allowDynamicHeaderValues = true;
+  state.baseJsonObject.outboundCorrelation = outboundCorrelation;
+}
+
 function hasUnsavedChanges() {
   return state.dirty || state.previewCanonicalJson !== state.baseCanonicalJson;
 }
@@ -467,6 +567,9 @@ async function addConfiguredModelFromSource(profile, source) {
     state.models.some((entry) => entry.isDefault),
   );
   state.models.push(model);
+  if (isOpenCodeProviderProfile(profile)) {
+    enableOpenCodeDynamicHeaderValues();
+  }
   state.selectedModelUiId = state.models.at(-1)?.uiId ?? null;
   state.inspectorVisible = !isNarrowModelsLayout();
   renderFastModelControls();

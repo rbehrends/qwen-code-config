@@ -80,7 +80,9 @@ Settings files can be opened by choosing a path in the `File` section, by using 
 
 The `Models` section is the main part of the editor. You can fetch model catalogs from built-in provider presets, add manual model entries when a catalog is unavailable or incomplete, remove models you no longer want, and reorder models within their protocol categories. Models can be moved with the arrow buttons on each row or by dragging them within the same protocol list. Each row can also be marked as the default model. The editor currently supports `openai` and `anthropic` protocols. Configurations for other protocols are preserved in the raw JSON but are not exposed through the model editor.
 
-Built-in provider presets currently include OpenRouter, OpenCode Go, OpenCode Zen, Kilo Code, NVIDIA, Ollama, Ollama Cloud, and LM Studio.
+Built-in provider presets currently include OpenRouter, OpenCode Go, OpenCode Zen, Kilo Code, NVIDIA, Ollama, Ollama Cloud, and LM Studio. Models added through the OpenCode Go and OpenCode Zen presets include the required dynamic `x-opencode-session` header, and the editor enables `outboundCorrelation.allowDynamicHeaderValues` when adding one.
+
+When an existing OpenCode Go or OpenCode Zen model is missing the session header or dynamic-header setting, the editor asks before preparing an in-memory update. Accepting marks the settings file as changed so the update can be reviewed and saved; declining leaves the file unchanged and shows a warning.
 
 The `Models` section also includes a `Fast Model` selector. This controls Qwen Code's `fastModel` setting, can inherit from the main model, and warns when the saved fast-model value does not match the configured structured-editor model list.
 

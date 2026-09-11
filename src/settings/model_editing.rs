@@ -1,7 +1,7 @@
 use crate::{
     models::{
-        apply_effective_default_flags, duplicate_key, mark_duplicate_models, normalized_model_name,
-        prettify_model_name,
+        apply_effective_default_flags, duplicate_key, has_dynamic_session_header,
+        is_open_code_base_url, mark_duplicate_models, normalized_model_name, prettify_model_name,
     },
     types::{ModelEntry, ReasoningEffort, ReasoningMode, SupportedProtocol},
 };
@@ -153,6 +153,32 @@ pub(super) fn collect_editor_warnings(json: &Value, models: &[ModelEntry]) -> Ve
                     format!(" @ {base_url}")
                 }
             ));
+        }
+    }
+
+    let open_code_models = models
+        .iter()
+        .filter(|model| is_open_code_base_url(&model.base_url))
+        .collect::<Vec<_>>();
+    if !open_code_models.is_empty() {
+        let missing_headers = open_code_models
+            .iter()
+            .filter(|model| !has_dynamic_session_header(model))
+            .count();
+        if missing_headers > 0 {
+            warnings.push(format!(
+                "{missing_headers} OpenCode Go/Zen model(s) are missing the dynamic `x-opencode-session` header."
+            ));
+        }
+        let dynamic_headers_enabled = json
+            .get("outboundCorrelation")
+            .and_then(|value| value.get("allowDynamicHeaderValues"))
+            .and_then(Value::as_bool)
+            .unwrap_or(false);
+        if !dynamic_headers_enabled {
+            warnings.push(
+                "OpenCode Go/Zen models require `outboundCorrelation.allowDynamicHeaderValues` to be true for session headers.".to_string(),
+            );
         }
     }
 

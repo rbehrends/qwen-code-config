@@ -39,19 +39,17 @@ pub(crate) fn load_settings_snapshot(path: Option<String>) -> Result<SettingsSna
 }
 
 pub(crate) fn save_settings_to_path(
-    source_path: &str,
     target_path: &str,
+    base_json: Value,
     options: ImportantOptions,
     env_vars: Vec<EnvironmentVariable>,
     models: Vec<ModelEntry>,
     mcp_servers: Vec<McpServerEntry>,
     fast_model: Option<FastModelSelection>,
 ) -> Result<SettingsSnapshot, String> {
-    let source_path_buf = expand_settings_path(source_path)?;
     let target_path_buf = expand_settings_path(target_path)?;
-    let json = load_settings_json_or_empty(&source_path_buf)?;
     let json = build_settings_json(
-        json,
+        base_json,
         &options,
         &env_vars,
         &models,
@@ -163,7 +161,11 @@ mod tests {
         types::{ReasoningEffort, ReasoningMode, SupportedProtocol},
     };
     use serde_json::{Map, Value};
-    use std::path::PathBuf;
+    use std::{
+        fs,
+        path::PathBuf,
+        time::{SystemTime, UNIX_EPOCH},
+    };
 
     #[test]
     fn set_bool_updates_nested_value_without_removing_other_settings() {
@@ -207,6 +209,43 @@ mod tests {
         .unwrap();
 
         assert_eq!(preview.canonical_json, "{}");
+    }
+
+    #[test]
+    fn save_settings_uses_base_json_for_top_level_updates() {
+        let temp_dir = std::env::temp_dir().join(format!(
+            "qwen-code-config-save-test-{}",
+            SystemTime::now()
+                .duration_since(UNIX_EPOCH)
+                .unwrap()
+                .as_nanos()
+        ));
+        fs::create_dir_all(&temp_dir).unwrap();
+        let target_path = temp_dir.join("settings.json");
+
+        save_settings_to_path(
+            &target_path.display().to_string(),
+            serde_json::json!({
+                "outboundCorrelation": {
+                    "allowDynamicHeaderValues": true
+                }
+            }),
+            ImportantOptions::default(),
+            Vec::new(),
+            Vec::new(),
+            Vec::new(),
+            None,
+        )
+        .unwrap();
+
+        let saved: Value =
+            serde_json::from_str(&fs::read_to_string(&target_path).unwrap()).unwrap();
+        assert_eq!(
+            saved["outboundCorrelation"]["allowDynamicHeaderValues"],
+            true
+        );
+
+        fs::remove_dir_all(temp_dir).unwrap();
     }
 
     #[test]

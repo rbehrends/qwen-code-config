@@ -3,13 +3,15 @@ use serde_json::Value;
 
 use super::{
     CatalogModel, CustomProviderProfile, EnvironmentVariable, FastModelSelection, ImportantOptions,
-    LayoutDensity, McpServerEntry, ModelEntry, ProviderDraftProfile, ProviderPreset, ThemeMode,
+    LayoutDensity, McpServerEntry, ModelEntry, OpenCodeCompatibilityStatus, ProviderDraftProfile,
+    ProviderPreset, ThemeMode,
 };
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct SaveOptionsRequest {
     pub(crate) path: String,
+    pub(crate) base_json: Value,
     pub(crate) options: ImportantOptions,
     pub(crate) env_vars: Vec<EnvironmentVariable>,
     pub(crate) models: Vec<ModelEntry>,
@@ -20,8 +22,8 @@ pub(crate) struct SaveOptionsRequest {
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct SaveOptionsAsRequest {
-    pub(crate) source_path: String,
     pub(crate) target_path: String,
+    pub(crate) base_json: Value,
     pub(crate) options: ImportantOptions,
     pub(crate) env_vars: Vec<EnvironmentVariable>,
     pub(crate) models: Vec<ModelEntry>,
@@ -87,6 +89,7 @@ pub(crate) struct SettingsSnapshot {
     pub(crate) fast_model: FastModelSelection,
     pub(crate) providers: Vec<ProviderPreset>,
     pub(crate) warnings: Vec<String>,
+    pub(crate) open_code_compatibility: OpenCodeCompatibilityStatus,
     pub(crate) last_backup_path: Option<String>,
     pub(crate) json: String,
 }

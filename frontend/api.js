@@ -44,6 +44,7 @@ export async function buildModelDraft(profile, source, hasExistingDefault) {
   const result = await requireInvoke()("build_model_draft_command", {
     request: {
       profile: {
+        providerId: profile.presetId ?? null,
         baseUrl: profile.baseUrl,
         envKey: profile.envKey,
         protocol: profile.protocol,

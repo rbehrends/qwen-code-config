@@ -60,7 +60,7 @@ pub(crate) fn save_options(
 ) -> Result<crate::types::SettingsSnapshot, String> {
     save_settings_to_path(
         &request.path,
-        &request.path,
+        request.base_json,
         request.options,
         request.env_vars,
         request.models,
@@ -74,8 +74,8 @@ pub(crate) fn save_options_as(
     request: SaveOptionsAsRequest,
 ) -> Result<crate::types::SettingsSnapshot, String> {
     save_settings_to_path(
-        &request.source_path,
         &request.target_path,
+        request.base_json,
         request.options,
         request.env_vars,
         request.models,

@@ -36,9 +36,19 @@ pub(crate) struct CustomProviderProfile {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ProviderDraftProfile {
+    #[serde(default)]
+    pub(crate) provider_id: Option<String>,
     pub(crate) base_url: String,
     pub(crate) env_key: String,
     pub(crate) protocol: SupportedProtocol,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub(crate) struct OpenCodeCompatibilityStatus {
+    pub(crate) has_open_code_models: bool,
+    pub(crate) model_ui_ids_needing_session_header: Vec<String>,
+    pub(crate) dynamic_header_values_enabled: bool,
 }
 
 #[derive(Debug, Clone, Copy, Deserialize, Serialize, PartialEq, Eq, PartialOrd, Ord, Hash)]
